@@ -15,6 +15,13 @@ enum UserRole {
   USER
 }
 
+enum TipoAtivo {
+  ACAO
+  ETF
+  FUNDO
+  TESOURO
+}
+
 model User {
   id        String   @id @default(uuid())
   name      String
@@ -24,5 +31,50 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  portfolios PortfolioConsolidado[]
+
   @@index([email])
+}
+
+model PortfolioConsolidado {
+  id                      BigInt     @id @default(autoincrement())
+  
+  // Campos de Controle (Obrigatórios)
+  userId                  String
+  dataBaseRef             DateTime   @db.Date
+  tipoAtivoCategoria      TipoAtivo
+  
+  // Campos Comuns
+  produtoDescricao        String?    @db.VarChar(255)
+  instituicao             String?    @db.VarChar(100)
+  conta                   String?    @db.VarChar(50)
+  codigoNegociacao        String?    @db.VarChar(20)
+  codigoIsin              String?    @db.VarChar(50)
+  
+  // Dados Quantitativos e Financeiros
+  quantidade              Decimal?   @db.Decimal(18, 8)
+  quantidadeDisponivel    Decimal?   @db.Decimal(18, 8)
+  quantidadeIndisponivel  Decimal?   @db.Decimal(18, 8)
+  valorAtualizado         Decimal?   @db.Decimal(18, 2)
+  precoFechamento         Decimal?   @db.Decimal(18, 2)
+  
+  // Campos Específicos Consolidados
+  cnpjEmissor             String?    @db.VarChar(20)
+  tipoPapel               String?    @db.VarChar(50)
+  agenteCustodia          String?    @db.VarChar(100)
+  motivoIndisponibilidade String?    @db.VarChar(100)
+  
+  // Campos Exclusivos Tesouro Direto
+  indexador               String?    @db.VarChar(20)
+  dataVencimento          DateTime?  @db.Date
+  valorAplicado           Decimal?   @db.Decimal(18, 2)
+  valorBruto              Decimal?   @db.Decimal(18, 2)
+  valorLiquido            Decimal?   @db.Decimal(18, 2)
+  
+  dataImportacao          DateTime   @default(now())
+  
+  user                    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, dataBaseRef, tipoAtivoCategoria], name: "idx_portfolio_controle")
+  @@map("portfolio_consolidado")
 }

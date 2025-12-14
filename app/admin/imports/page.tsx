@@ -13,24 +13,28 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, FileText } from "lucide-react";
+import { Upload, FileText, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { ImportResult } from "@/types/portfolio";
 
 export default function ImportsPage() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [assetType, setAssetType] = useState("");
     const [date, setDate] = useState("");
+    const [isImporting, setIsImporting] = useState(false);
+    const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file && file.name.endsWith('.csv')) {
             setSelectedFile(file);
+            setImportResult(null);
         } else {
             alert('Por favor, selecione um arquivo CSV válido');
             e.target.value = '';
         }
     };
 
-    const handleImport = () => {
+    const handleImport = async () => {
         if (!selectedFile) {
             alert('Por favor, selecione um arquivo CSV');
             return;
@@ -44,16 +48,47 @@ export default function ImportsPage() {
             return;
         }
 
-        // Validar formato da data DD/MM/YYYY
         const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
         if (!dateRegex.test(date)) {
             alert('Por favor, informe a data no formato DD/MM/YYYY');
             return;
         }
 
-        // Lógica de importação será implementada no próximo prompt
-        console.log('Importando:', { selectedFile, assetType, date });
-        alert('Funcionalidade de importação será implementada no próximo passo!');
+        setIsImporting(true);
+        setImportResult(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('assetType', assetType);
+            formData.append('date', date);
+
+            const response = await fetch('/api/admin/imports/portfolio', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result: ImportResult = await response.json();
+            setImportResult(result);
+
+            if (result.success) {
+                setSelectedFile(null);
+                setAssetType('');
+                setDate('');
+                const fileInput = document.getElementById('csv-file') as HTMLInputElement;
+                if (fileInput) fileInput.value = '';
+            }
+        } catch (error) {
+            setImportResult({
+                success: false,
+                recordsImported: 0,
+                recordsDeleted: 0,
+                errors: ['Erro ao conectar com o servidor'],
+                message: 'Falha na importação',
+            });
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     return (
@@ -134,11 +169,65 @@ export default function ImportsPage() {
 
                             {/* Import Button */}
                             <div className="pt-4">
-                                <Button onClick={handleImport} className="w-full sm:w-auto">
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    Importar
+                                <Button
+                                    onClick={handleImport}
+                                    className="w-full sm:w-auto"
+                                    disabled={isImporting}
+                                >
+                                    {isImporting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Importando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-4 h-4 mr-2" />
+                                            Importar
+                                        </>
+                                    )}
                                 </Button>
                             </div>
+
+                            {/* Import Result */}
+                            {importResult && (
+                                <div className={`mt-6 p-4 rounded-lg border ${importResult.success
+                                        ? 'bg-green-50 border-green-200'
+                                        : 'bg-red-50 border-red-200'
+                                    }`}>
+                                    <div className="flex items-start gap-3">
+                                        {importResult.success ? (
+                                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                                        ) : (
+                                            <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                                        )}
+                                        <div className="flex-1">
+                                            <h4 className={`font-semibold ${importResult.success ? 'text-green-900' : 'text-red-900'
+                                                }`}>
+                                                {importResult.success ? 'Importação Concluída!' : 'Erro na Importação'}
+                                            </h4>
+                                            <p className={`text-sm mt-1 ${importResult.success ? 'text-green-700' : 'text-red-700'
+                                                }`}>
+                                                {importResult.message}
+                                            </p>
+                                            {importResult.success && (
+                                                <div className="mt-2 text-sm text-green-700">
+                                                    <p>• {importResult.recordsImported} registros importados</p>
+                                                    {importResult.recordsDeleted > 0 && (
+                                                        <p>• {importResult.recordsDeleted} registros anteriores substituídos</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {!importResult.success && importResult.errors.length > 0 && (
+                                                <div className="mt-2 text-sm text-red-700">
+                                                    {importResult.errors.map((error, index) => (
+                                                        <p key={index}>• {error}</p>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
