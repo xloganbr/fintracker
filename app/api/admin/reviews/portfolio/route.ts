@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
         const assetType = searchParams.get("assetType");
         const page = parseInt(searchParams.get("page") || "1");
         const pageSize = 15;
+        const sortBy = searchParams.get("sortBy") || "tipoAtivoCategoria";
+        const sortOrder = searchParams.get("sortOrder") || "asc";
 
         // Validate date
         if (!dateStr) {
@@ -48,12 +50,18 @@ export async function GET(request: NextRequest) {
         // Get total count
         const totalCount = await prisma.portfolioConsolidado.count({ where });
 
+        // Build orderBy clause
+        const orderByClause: any = {};
+        if (sortBy) {
+            orderByClause[sortBy] = sortOrder === 'desc' ? 'desc' : 'asc';
+        }
+
         // Get paginated data
         const records = await prisma.portfolioConsolidado.findMany({
             where,
             skip: (page - 1) * pageSize,
             take: pageSize,
-            orderBy: [
+            orderBy: sortBy ? orderByClause : [
                 { tipoAtivoCategoria: 'asc' },
                 { produtoDescricao: 'asc' },
             ],
@@ -105,6 +113,42 @@ export async function GET(request: NextRequest) {
         console.error("Error fetching portfolio data:", error);
         return NextResponse.json(
             { error: "Failed to fetch portfolio data" },
+            { status: 500 }
+        );
+    }
+}
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session || session.user.role !== "ADMIN") {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const recordId = searchParams.get("id");
+
+        if (!recordId) {
+            return NextResponse.json(
+                { error: "Record ID is required" },
+                { status: 400 }
+            );
+        }
+
+        // Delete the record
+        await prisma.portfolioConsolidado.delete({
+            where: {
+                id: BigInt(recordId),
+                userId: session.user.id, // Ensure user can only delete their own records
+            },
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Error deleting portfolio record:", error);
+        return NextResponse.json(
+            { error: "Failed to delete record" },
             { status: 500 }
         );
     }

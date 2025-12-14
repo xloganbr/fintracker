@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
 
 interface PortfolioRecord {
     id: string;
@@ -53,6 +53,9 @@ export default function ReviewsPage() {
     const [data, setData] = useState<ReviewResponse | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [error, setError] = useState<string | null>(null);
+    const [sortBy, setSortBy] = useState<string>("tipoAtivoCategoria");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const handleSearch = async (page: number = 1) => {
         if (!date) {
@@ -74,6 +77,8 @@ export default function ReviewsPage() {
                 date,
                 assetType,
                 page: page.toString(),
+                sortBy,
+                sortOrder,
             });
 
             const response = await fetch(`/api/admin/reviews/portfolio?${params}`);
@@ -91,6 +96,64 @@ export default function ReviewsPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSort = (column: string) => {
+        if (sortBy === column) {
+            // Toggle sort order if clicking the same column
+            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+        } else {
+            // Set new column and default to ascending
+            setSortBy(column);
+            setSortOrder("asc");
+        }
+        // Trigger a new search with the updated sorting
+        setTimeout(() => handleSearch(currentPage), 0);
+    };
+
+    const handleDelete = async (recordId: string) => {
+        if (!confirm('Tem certeza que deseja excluir este registro?')) {
+            return;
+        }
+
+        setDeletingId(recordId);
+        try {
+            const response = await fetch(`/api/admin/reviews/portfolio?id=${recordId}`, {
+                method: 'DELETE',
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Erro ao excluir registro');
+            }
+
+            // Refresh the data after successful deletion
+            await handleSearch(currentPage);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Erro ao excluir registro');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const SortableHeader = ({ column, children, className = "" }: { column: string; children: React.ReactNode; className?: string }) => {
+        const isSorted = sortBy === column;
+        return (
+            <TableHead className={className}>
+                <button
+                    onClick={() => handleSort(column)}
+                    className="flex items-center gap-1 hover:text-gray-900 transition-colors font-medium"
+                >
+                    {children}
+                    {isSorted ? (
+                        sortOrder === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-30" />
+                    )}
+                </button>
+            </TableHead>
+        );
     };
 
     const formatCurrency = (value: number | null) => {
@@ -202,14 +265,15 @@ export default function ReviewsPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead>Tipo</TableHead>
-                                                    <TableHead>Produto</TableHead>
-                                                    <TableHead>Instituição</TableHead>
-                                                    <TableHead>Conta</TableHead>
-                                                    <TableHead>Código</TableHead>
-                                                    <TableHead className="text-right">Quantidade</TableHead>
-                                                    <TableHead className="text-right">Preço</TableHead>
-                                                    <TableHead className="text-right">Valor Atualizado</TableHead>
+                                                    <SortableHeader column="tipoAtivoCategoria">Tipo</SortableHeader>
+                                                    <SortableHeader column="produtoDescricao">Produto</SortableHeader>
+                                                    <SortableHeader column="instituicao">Instituição</SortableHeader>
+                                                    <SortableHeader column="conta">Conta</SortableHeader>
+                                                    <SortableHeader column="codigoNegociacao">Código</SortableHeader>
+                                                    <SortableHeader column="quantidade" className="text-right">Quantidade</SortableHeader>
+                                                    <SortableHeader column="precoFechamento" className="text-right">Preço</SortableHeader>
+                                                    <SortableHeader column="valorAtualizado" className="text-right">Valor Atualizado</SortableHeader>
+                                                    <TableHead className="text-center">Ações</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -226,6 +290,21 @@ export default function ReviewsPage() {
                                                         <TableCell className="text-right">{formatCurrency(record.precoFechamento)}</TableCell>
                                                         <TableCell className="text-right font-semibold">
                                                             {formatCurrency(record.valorAtualizado)}
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(record.id)}
+                                                                disabled={deletingId === record.id}
+                                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            >
+                                                                {deletingId === record.id ? (
+                                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                )}
+                                                            </Button>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
