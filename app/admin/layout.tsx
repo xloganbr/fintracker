@@ -16,8 +16,8 @@ export default function AdminLayout({
     const router = useRouter();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Check if user is admin
-    if (session?.user?.role !== "ADMIN") {
+    // Check if user is authenticated
+    if (!session) {
         router.push("/login");
         return null;
     }

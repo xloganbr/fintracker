@@ -1,19 +1,28 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function LoginPage() {
+function LoginForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [authMessage, setAuthMessage] = useState("");
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        const error = searchParams.get("error");
+        if (error === "AuthRequired") {
+            setAuthMessage("É preciso estar logado para visualizar esta opção.");
+        }
+    }, [searchParams]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,6 +30,8 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
+            const callbackUrl = searchParams.get("callbackUrl") || "/admin";
+
             const result = await signIn("credentials", {
                 email,
                 password,
@@ -30,7 +41,7 @@ export default function LoginPage() {
             if (result?.error) {
                 setError("Email ou senha inválidos");
             } else {
-                router.push("/admin/users");
+                router.push(callbackUrl);
                 router.refresh();
             }
         } catch (error) {
@@ -67,6 +78,11 @@ export default function LoginPage() {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {authMessage && (
+                            <div className="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-md p-3">
+                                {authMessage}
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
@@ -103,5 +119,19 @@ export default function LoginPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-gray-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                </div>
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
     );
 }

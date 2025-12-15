@@ -65,5 +65,17 @@ export const authOptions: NextAuthOptions = {
             }
             return session;
         },
+        async redirect({ url, baseUrl }) {
+            // If url is a relative path, make it absolute
+            if (url.startsWith("/")) {
+                return `${baseUrl}${url}`;
+            }
+            // If url is on the same origin, allow it
+            else if (new URL(url).origin === baseUrl) {
+                return url;
+            }
+            // Otherwise, redirect to dashboard
+            return `${baseUrl}/admin`;
+        },
     },
 };
