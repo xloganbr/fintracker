@@ -1,3 +1,5 @@
+import PortfolioEvolutionChart from "@/components/portfolio-evolution-chart";
+
 export default function AdminPage() {
     return (
         <div className="space-y-6">
@@ -82,6 +84,9 @@ export default function AdminPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Portfolio Evolution Chart */}
+            <PortfolioEvolutionChart />
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <h2 className="text-lg font-semibold text-blue-900 mb-2">
