@@ -147,6 +147,7 @@ export default function ImportsPage() {
                                         <SelectItem value="etf">ETF</SelectItem>
                                         <SelectItem value="fii">Fundos Imobiliários</SelectItem>
                                         <SelectItem value="tesouro">Tesouro Direto</SelectItem>
+                                        <SelectItem value="bdr">BDR</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -191,8 +192,8 @@ export default function ImportsPage() {
                             {/* Import Result */}
                             {importResult && (
                                 <div className={`mt-6 p-4 rounded-lg border ${importResult.success
-                                        ? 'bg-green-50 border-green-200'
-                                        : 'bg-red-50 border-red-200'
+                                    ? 'bg-green-50 border-green-200'
+                                    : 'bg-red-50 border-red-200'
                                     }`}>
                                     <div className="flex items-start gap-3">
                                         {importResult.success ? (

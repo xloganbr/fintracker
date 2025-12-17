@@ -177,6 +177,7 @@ export default function ReviewsPage() {
         ETF: 'ETF',
         FUNDO: 'Fundo Imobiliário',
         TESOURO: 'Tesouro Direto',
+        BDR: 'BDR',
     };
 
     return (
@@ -226,6 +227,7 @@ export default function ReviewsPage() {
                                             <SelectItem value="ETF">ETF</SelectItem>
                                             <SelectItem value="FUNDO">Fundos Imobiliários</SelectItem>
                                             <SelectItem value="TESOURO">Tesouro Direto</SelectItem>
+                                            <SelectItem value="BDR">BDR</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

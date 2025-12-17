@@ -17,7 +17,7 @@ export async function parsePortfolioCSV(
     csvContent: string,
     userId: string,
     dataBaseRef: Date,
-    tipoAtivo: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO'
+    tipoAtivo: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR'
 ): Promise<PortfolioRecord[]> {
     const lines = csvContent.split('\n').filter(line => line.trim() !== '');
 
@@ -100,7 +100,7 @@ function transformRowToRecord(
     row: CSVRow,
     userId: string,
     dataBaseRef: Date,
-    tipoAtivo: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO'
+    tipoAtivo: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR'
 ): PortfolioRecord {
     const record: PortfolioRecord = {
         userId,
@@ -166,6 +166,18 @@ function transformRowToRecord(
         // Campos que não existem no CSV do Tesouro
         record.conta = null;
         record.codigoNegociacao = null;
+
+    } else if (tipoAtivo === 'BDR') {
+        // Mapeamento para BDR (Brazilian Depositary Receipts)
+        record.produtoDescricao = sanitizeString(row['Produto']);
+        record.instituicao = sanitizeString(row['Instituição']);
+        record.conta = sanitizeString(row['Conta']);
+        record.codigoNegociacao = sanitizeString(row['Código de Negociação']);
+        record.codigoIsin = sanitizeString(row['Código ISIN']);
+        record.agenteCustodia = sanitizeString(row['Escriturador']); // Escriturador -> agente_custodia
+        record.quantidade = parseBrazilianNumber(row['Quantidade']);
+        record.precoFechamento = parseBrazilianCurrency(row['Preço de Fechamento']);
+        record.valorAtualizado = parseBrazilianCurrency(row['Valor Atualizado']);
     }
 
     return record;
