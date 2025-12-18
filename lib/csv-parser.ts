@@ -17,7 +17,7 @@ export async function parsePortfolioCSV(
     csvContent: string,
     userId: string,
     dataBaseRef: Date,
-    tipoAtivo: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR'
+    tipoAtivo: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR' | 'RFIXA'
 ): Promise<PortfolioRecord[]> {
     const lines = csvContent.split('\n').filter(line => line.trim() !== '');
 
@@ -100,7 +100,7 @@ function transformRowToRecord(
     row: CSVRow,
     userId: string,
     dataBaseRef: Date,
-    tipoAtivo: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR'
+    tipoAtivo: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR' | 'RFIXA'
 ): PortfolioRecord {
     const record: PortfolioRecord = {
         userId,
@@ -178,6 +178,21 @@ function transformRowToRecord(
         record.quantidade = parseBrazilianNumber(row['Quantidade']);
         record.precoFechamento = parseBrazilianCurrency(row['Preço de Fechamento']);
         record.valorAtualizado = parseBrazilianCurrency(row['Valor Atualizado']);
+
+    } else if (tipoAtivo === 'RFIXA') {
+        // Mapeamento para Renda Fixa (Fixed Income)
+        record.produtoDescricao = sanitizeString(row['Produto']);
+        record.instituicao = sanitizeString(row['Instituição']);
+        record.codigoIsin = sanitizeString(row['Código']);
+        record.agenteCustodia = sanitizeString(row['Emissor']);
+        record.indexador = sanitizeString(row['Indexador']);
+        record.dataVencimento = parseBrazilianDate(row['Vencimento']);
+        record.valorAtualizado = parseBrazilianCurrency(row['Valor Atualizado CURVA']);
+        record.precoFechamento = parseBrazilianCurrency(row['Preço Atualizado CURVA']);
+        record.quantidade = parseBrazilianNumber(row['Quantidade']);
+
+        // Campo que não existe no CSV de Renda Fixa
+        record.codigoNegociacao = null;
     }
 
     return record;

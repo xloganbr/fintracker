@@ -178,6 +178,7 @@ export default function ReviewsPage() {
         FUNDO: 'Fundo Imobiliário',
         TESOURO: 'Tesouro Direto',
         BDR: 'BDR',
+        RFIXA: 'Renda Fixa',
     };
 
     return (
@@ -228,6 +229,7 @@ export default function ReviewsPage() {
                                             <SelectItem value="FUNDO">Fundos Imobiliários</SelectItem>
                                             <SelectItem value="TESOURO">Tesouro Direto</SelectItem>
                                             <SelectItem value="BDR">BDR</SelectItem>
+                                            <SelectItem value="RFIXA">Renda Fixa</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

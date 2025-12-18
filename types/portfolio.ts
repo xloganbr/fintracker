@@ -2,7 +2,7 @@ export interface PortfolioRecord {
     // Campos de Controle
     userId: string;
     dataBaseRef: Date;
-    tipoAtivoCategoria: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR';
+    tipoAtivoCategoria: 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR' | 'RFIXA';
 
     // Campos Comuns
     produtoDescricao?: string | null;
@@ -40,4 +40,4 @@ export interface ImportResult {
     message: string;
 }
 
-export type AssetType = 'acoes' | 'etf' | 'fii' | 'tesouro' | 'bdr';
+export type AssetType = 'acoes' | 'etf' | 'fii' | 'tesouro' | 'bdr' | 'rfixa';

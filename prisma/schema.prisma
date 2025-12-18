@@ -21,6 +21,7 @@ enum TipoAtivo {
   FUNDO
   TESOURO
   BDR
+  RFIXA
 }
 
 model User {

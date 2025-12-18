@@ -148,6 +148,7 @@ export default function ImportsPage() {
                                         <SelectItem value="fii">Fundos Imobiliários</SelectItem>
                                         <SelectItem value="tesouro">Tesouro Direto</SelectItem>
                                         <SelectItem value="bdr">BDR</SelectItem>
+                                        <SelectItem value="rfixa">Renda Fixa</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

@@ -174,13 +174,14 @@ export function sanitizeString(value: string | null | undefined): string | null 
 /**
  * Converte tipo de ativo do frontend para enum do banco
  */
-export function mapAssetType(type: string): 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR' {
-    const mapping: Record<string, 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR'> = {
+export function mapAssetType(type: string): 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR' | 'RFIXA' {
+    const mapping: Record<string, 'ACAO' | 'ETF' | 'FUNDO' | 'TESOURO' | 'BDR' | 'RFIXA'> = {
         'acoes': 'ACAO',
         'etf': 'ETF',
         'fii': 'FUNDO',
         'tesouro': 'TESOURO',
         'bdr': 'BDR',
+        'rfixa': 'RFIXA',
     };
 
     return mapping[type.toLowerCase()] || 'ACAO';
