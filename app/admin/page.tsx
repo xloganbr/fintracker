@@ -1,11 +1,11 @@
 import PortfolioEvolutionChart from "@/components/portfolio-evolution-chart";
+import PortfolioByAssetTypeChart from "@/components/portfolio-by-asset-type-chart";
 
 export default function AdminPage() {
     return (
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-                <p className="text-gray-600 mt-1">Bem-vindo ao FinTracker</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -88,15 +88,8 @@ export default function AdminPage() {
             {/* Portfolio Evolution Chart */}
             <PortfolioEvolutionChart />
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h2 className="text-lg font-semibold text-blue-900 mb-2">
-                    🎉 Bem-vindo ao FinTracker!
-                </h2>
-                <p className="text-blue-800">
-                    O sistema de gestão financeira está configurado e pronto para uso.
-                    Comece gerenciando os usuários na seção <strong>Usuários</strong> no menu lateral.
-                </p>
-            </div>
+            {/* Portfolio by Asset Type Chart */}
+            <PortfolioByAssetTypeChart />
         </div>
     );
 }
