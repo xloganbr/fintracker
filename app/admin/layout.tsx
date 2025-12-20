@@ -3,7 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Users, LogOut, Menu, X, Upload, ClipboardCheck } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, Menu, X, Upload, ClipboardCheck, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -32,6 +32,11 @@ export default function AdminLayout({
             icon: LayoutDashboard,
             label: "Dashboard",
             href: "/admin",
+        },
+        {
+            icon: TrendingUp,
+            label: "Proventos",
+            href: "/admin/proventos",
         },
         {
             icon: Users,
