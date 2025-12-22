@@ -46,42 +46,98 @@ export async function GET(request: NextRequest) {
             };
         }
 
-        // Fetch raw data
+        // Fetch raw data with ticker info
         const proventos = await prisma.proventosConsolidado.findMany({
             where,
             select: {
                 dataPagamento: true,
                 valorLiquido: true,
+                codigoNegociacao: true,
             },
             orderBy: {
                 dataPagamento: 'asc',
             },
         });
 
-        // Aggregate by month mapping 'YYYY-MM' -> value
-        const aggregatedData = new Map<string, number>();
+        // Get unique tickers to fetch categories
+        const uniqueTickers = Array.from(new Set(proventos.map(p => p.codigoNegociacao).filter(Boolean)));
+
+        // Fetch categories
+        const categories = await prisma.categoriaAtivo.findMany({
+            where: {
+                codigoNegociacao: { in: uniqueTickers as string[] }
+            },
+            select: {
+                codigoNegociacao: true,
+                tipo: true
+            }
+        });
+
+        // Map ticker -> type
+        const tickerTypeMap = new Map<string, string>();
+        categories.forEach(c => tickerTypeMap.set(c.codigoNegociacao, c.tipo));
+
+        // Aggregation Containers
+        const timeSeriesData = new Map<string, number>();
+        const categoryData = new Map<string, number>();
+        const categoryAssets = new Map<string, Map<string, number>>(); // Category -> Ticker -> Value
+        let totalValue = 0;
 
         proventos.forEach((item) => {
             if (!item.dataPagamento || !item.valorLiquido) return;
 
-            // Normalize to month start string "YYYY-MM"
-            // We use YYYY-MM-01 just to have a clean sortable key that is also a valid date stub
-            const dateKey = format(item.dataPagamento, "yyyy-MM");
+            const val = Number(item.valorLiquido);
+            totalValue += val;
 
-            const currentValue = aggregatedData.get(dateKey) || 0;
-            aggregatedData.set(dateKey, currentValue + Number(item.valorLiquido));
+            // Time Series Aggregation
+            const dateKey = format(item.dataPagamento, "yyyy-MM");
+            timeSeriesData.set(dateKey, (timeSeriesData.get(dateKey) || 0) + val);
+
+            // Category Aggregation
+            const type = tickerTypeMap.get(item.codigoNegociacao) || 'OUTROS';
+            categoryData.set(type, (categoryData.get(type) || 0) + val);
+
+            // Asset Detail Aggregation
+            if (!categoryAssets.has(type)) {
+                categoryAssets.set(type, new Map<string, number>());
+            }
+            const assetsMap = categoryAssets.get(type)!;
+            const ticker = item.codigoNegociacao || 'DESCONHECIDO';
+            assetsMap.set(ticker, (assetsMap.get(ticker) || 0) + val);
         });
 
-        // Convert to array and sort
-        const chartData = Array.from(aggregatedData.entries())
+        // Format Time Series Data
+        const chartData = Array.from(timeSeriesData.entries())
             .map(([key, value]) => ({
-                date: `${key}-01`, // Reconstruct full date string for parsing on frontend
+                date: `${key}-01`,
                 value: Number(value.toFixed(2)),
             }))
             .sort((a, b) => a.date.localeCompare(b.date));
 
+        // Format Category Data with Assets
+        const allocationData = Array.from(categoryData.entries())
+            .map(([category, value]) => {
+                // Format assets for this category
+                const assetsMap = categoryAssets.get(category)!;
+                const assets = Array.from(assetsMap.entries())
+                    .map(([ticker, val]) => ({
+                        ticker,
+                        value: Number(val.toFixed(2))
+                    }))
+                    .sort((a, b) => b.value - a.value); // Sort assets by value
+
+                return {
+                    category,
+                    value: Number(value.toFixed(2)),
+                    percentage: totalValue > 0 ? Number(((value / totalValue) * 100).toFixed(2)) : 0,
+                    assets // detailed breakdown
+                };
+            })
+            .sort((a, b) => b.value - a.value); // Sort by value desc
+
         return NextResponse.json({
             data: chartData,
+            allocation: allocationData,
             period,
         });
     } catch (error) {
