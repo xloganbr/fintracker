@@ -97,7 +97,41 @@ export async function POST(request: NextRequest) {
 
         // Usar transação para garantir atomicidade (rollback em caso de erro)
         const result = await prisma.$transaction(async (tx) => {
-            // Idempotent delete: Remove existing records for this user, date, and asset type
+            // 1. Auto-register new asset categories
+            // Extract unique tickers from the current batch
+            const uniqueTickers = Array.from(new Set(
+                records
+                    .map(r => r.codigoNegociacao)
+                    .filter((t): t is string => !!t) // Filter out null/undefined
+            ));
+
+            if (uniqueTickers.length > 0) {
+                // Find which ones already exist
+                const existingCategories = await tx.categoriaAtivo.findMany({
+                    where: {
+                        codigoNegociacao: { in: uniqueTickers }
+                    },
+                    select: { codigoNegociacao: true }
+                });
+
+                const existingSet = new Set(existingCategories.map(c => c.codigoNegociacao));
+
+                // Determine which are missing
+                const missingTickers = uniqueTickers.filter(ticker => !existingSet.has(ticker));
+
+                // Insert missing ones
+                if (missingTickers.length > 0) {
+                    await tx.categoriaAtivo.createMany({
+                        data: missingTickers.map(ticker => ({
+                            codigoNegociacao: ticker,
+                            tipo: tipoAtivo
+                        })),
+                        skipDuplicates: true // Safety net, though we filtered above
+                    });
+                }
+            }
+
+            // 2. Idempotent delete: Remove existing records for this user, date, and asset type
             const deleteResult = await tx.portfolioConsolidado.deleteMany({
                 where: {
                     userId: session.user.id,
@@ -106,7 +140,7 @@ export async function POST(request: NextRequest) {
                 },
             });
 
-            // Insert new records
+            // 3. Insert new records
             const createResult = await tx.portfolioConsolidado.createMany({
                 data: records.map(record => ({
                     ...record,

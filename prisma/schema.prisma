@@ -101,3 +101,13 @@ model PortfolioConsolidado {
   @@index([userId, dataBaseRef, tipoAtivoCategoria], name: "idx_portfolio_controle")
   @@map("portfolio_consolidado")
 }
+
+model CategoriaAtivo {
+  id               Int       @id @default(autoincrement())
+  codigoNegociacao String    @unique @db.VarChar(50)
+  tipo             TipoAtivo
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("categoria_ativo")
+}
