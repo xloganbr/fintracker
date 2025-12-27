@@ -58,8 +58,31 @@ interface ProventoRecord {
     valorLiquido: number | null;
 }
 
+interface MovimentacaoRecord {
+    id: string;
+    entradaSaida: string;
+    dataMovimentacao: string;
+    produto: string;
+    instituicao: string;
+    quantidade: number;
+    precoUnitario: number;
+    valorOperacao: number;
+    codigoNegociacao: string;
+}
+
 interface ProventosResponse {
     records: ProventoRecord[];
+    pagination: {
+        page: number;
+        pageSize: number;
+        totalCount: number;
+        totalPages: number;
+    };
+    totalValue: number;
+}
+
+interface MovimentacoesResponse {
+    records: MovimentacaoRecord[];
     pagination: {
         page: number;
         pageSize: number;
@@ -90,8 +113,23 @@ export default function ReviewsPage() {
     const [proventosPage, setProventosPage] = useState(1);
     const [proventosError, setProventosError] = useState<string | null>(null);
     const [proventosSortBy, setProventosSortBy] = useState<string>("dataPagamento");
+
+
     const [proventosSortOrder, setProventosSortOrder] = useState<"asc" | "desc">("desc");
     const [proventosDeletingId, setProventosDeletingId] = useState<string | null>(null);
+
+    // Movimentações tab state
+    const [movDataInicial, setMovDataInicial] = useState("");
+    const [movDataFinal, setMovDataFinal] = useState("");
+    const [movAssetType, setMovAssetType] = useState("TODOS");
+    const [movTicker, setMovTicker] = useState("");
+    const [movLoading, setMovLoading] = useState(false);
+    const [movData, setMovData] = useState<MovimentacoesResponse | null>(null);
+    const [movPage, setMovPage] = useState(1);
+    const [movError, setMovError] = useState<string | null>(null);
+    const [movSortBy, setMovSortBy] = useState<string>("dataMovimentacao");
+    const [movSortOrder, setMovSortOrder] = useState<"asc" | "desc">("desc");
+    const [movDeletingId, setMovDeletingId] = useState<string | null>(null);
 
     const handleSearch = async (page: number = 1) => {
         if (!date) {
@@ -255,6 +293,95 @@ export default function ReviewsPage() {
         }
     };
 
+    const handleMovimentacoesSearch = async (page: number = 1) => {
+        setMovLoading(true);
+        setMovError(null);
+
+        try {
+            const params = new URLSearchParams({
+                page: page.toString(),
+                sortBy: movSortBy,
+                sortOrder: movSortOrder,
+                assetType: movAssetType,
+            });
+
+            if (movDataInicial) {
+                const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+                if (!dateRegex.test(movDataInicial)) {
+                    alert('Por favor, informe a Data Inicial no formato DD/MM/YYYY');
+                    setMovLoading(false);
+                    return;
+                }
+                params.append('startDate', movDataInicial);
+            }
+
+            if (movDataFinal) {
+                const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+                if (!dateRegex.test(movDataFinal)) {
+                    alert('Por favor, informe a Data Final no formato DD/MM/YYYY');
+                    setMovLoading(false);
+                    return;
+                }
+                params.append('endDate', movDataFinal);
+            }
+
+            if (movTicker) {
+                params.append('ticker', movTicker);
+            }
+
+            const response = await fetch(`/api/admin/reviews/movimentacoes?${params}`);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Erro ao buscar dados');
+            }
+
+            setMovData(result);
+            setMovPage(page);
+        } catch (err) {
+            setMovError(err instanceof Error ? err.message : 'Erro desconhecido');
+            setMovData(null);
+        } finally {
+            setMovLoading(false);
+        }
+    };
+
+    const handleMovimentacoesSort = (column: string) => {
+        if (movSortBy === column) {
+            setMovSortOrder(movSortOrder === "asc" ? "desc" : "asc");
+        } else {
+            setMovSortBy(column);
+            setMovSortOrder("asc");
+        }
+        setTimeout(() => handleMovimentacoesSearch(movPage), 0);
+    };
+
+    const handleMovimentacoesDelete = async (recordId: string) => {
+        if (!confirm('Tem certeza que deseja excluir esta movimentação?')) {
+            return;
+        }
+
+        setMovDeletingId(recordId);
+        try {
+            const response = await fetch(`/api/admin/reviews/movimentacoes?id=${recordId}`, {
+                method: 'DELETE',
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Erro ao excluir registro');
+            }
+
+            await handleMovimentacoesSearch(movPage);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Erro ao excluir registro');
+        } finally {
+            setMovDeletingId(null);
+        }
+    };
+
+
     const SortableHeader = ({ column, children, className = "" }: { column: string; children: React.ReactNode; className?: string }) => {
         const isSorted = sortBy === column;
         return (
@@ -285,6 +412,25 @@ export default function ReviewsPage() {
                     {children}
                     {isSorted ? (
                         proventosSortOrder === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-30" />
+                    )}
+                </button>
+            </TableHead>
+        );
+    };
+
+    const MovimentacoesSortableHeader = ({ column, children, className = "" }: { column: string; children: React.ReactNode; className?: string }) => {
+        const isSorted = movSortBy === column;
+        return (
+            <TableHead className={className}>
+                <button
+                    onClick={() => handleMovimentacoesSort(column)}
+                    className="flex items-center gap-1 hover:text-gray-900 transition-colors font-medium"
+                >
+                    {children}
+                    {isSorted ? (
+                        movSortOrder === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                     ) : (
                         <ArrowUpDown className="w-4 h-4 opacity-30" />
                     )}
@@ -329,6 +475,7 @@ export default function ReviewsPage() {
                 <TabsList>
                     <TabsTrigger value="portfolio">Portfólio Consolidado</TabsTrigger>
                     <TabsTrigger value="proventos">Proventos</TabsTrigger>
+                    <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="portfolio" className="mt-6">
@@ -668,6 +815,206 @@ export default function ReviewsPage() {
 
                             {/* Empty State */}
                             {proventosData && proventosData.records.length === 0 && (
+                                <div className="text-center py-12 text-gray-500">
+                                    <p className="text-lg font-medium">Nenhum registro encontrado</p>
+                                    <p className="text-sm mt-1">
+                                        Tente ajustar os filtros ou importe dados primeiro
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="movimentacoes" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Consultar Movimentações</CardTitle>
+                            <CardDescription>
+                                Filtre por período, tipo de ativo e ticker
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {/* Filters */}
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="movDataInicial">Data Inicial</Label>
+                                    <Input
+                                        id="movDataInicial"
+                                        type="text"
+                                        placeholder="DD/MM/YYYY"
+                                        value={movDataInicial}
+                                        onChange={(e) => setMovDataInicial(e.target.value)}
+                                        maxLength={10}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="movDataFinal">Data Final</Label>
+                                    <Input
+                                        id="movDataFinal"
+                                        type="text"
+                                        placeholder="DD/MM/YYYY"
+                                        value={movDataFinal}
+                                        onChange={(e) => setMovDataFinal(e.target.value)}
+                                        maxLength={10}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="movAssetType">Tipo de Ativo</Label>
+                                    <Select value={movAssetType} onValueChange={setMovAssetType}>
+                                        <SelectTrigger id="movAssetType">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="TODOS">Todos</SelectItem>
+                                            <SelectItem value="ACAO">Ações</SelectItem>
+                                            <SelectItem value="ETF">ETF</SelectItem>
+                                            <SelectItem value="FUNDO">Fundos Imobiliários</SelectItem>
+                                            <SelectItem value="TESOURO">Tesouro Direto</SelectItem>
+                                            <SelectItem value="BDR">BDR</SelectItem>
+                                            <SelectItem value="RFIXA">Renda Fixa</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="movTicker">Ticker</Label>
+                                    <Input
+                                        id="movTicker"
+                                        type="text"
+                                        placeholder="Ex: PETR4"
+                                        value={movTicker}
+                                        onChange={(e) => setMovTicker(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="flex items-end">
+                                    <Button
+                                        onClick={() => handleMovimentacoesSearch(1)}
+                                        disabled={movLoading}
+                                        className="w-full"
+                                    >
+                                        {movLoading ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                Consultando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Search className="w-4 h-4 mr-2" />
+                                                Consultar
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Error Message */}
+                            {movError && (
+                                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                                    {movError}
+                                </div>
+                            )}
+
+                            {/* Results Table */}
+                            {movData && movData.records.length > 0 && (
+                                <div className="space-y-4">
+                                    <div className="rounded-md border overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <MovimentacoesSortableHeader column="entradaSaida">Tipo</MovimentacoesSortableHeader>
+                                                    <MovimentacoesSortableHeader column="dataMovimentacao">Data</MovimentacoesSortableHeader>
+                                                    <MovimentacoesSortableHeader column="codigoNegociacao">Ticker</MovimentacoesSortableHeader>
+                                                    <MovimentacoesSortableHeader column="produto">Produto</MovimentacoesSortableHeader>
+                                                    <MovimentacoesSortableHeader column="instituicao">Instituição</MovimentacoesSortableHeader>
+                                                    <MovimentacoesSortableHeader column="quantidade" className="text-right">Qtd</MovimentacoesSortableHeader>
+                                                    <MovimentacoesSortableHeader column="precoUnitario" className="text-right">Preço</MovimentacoesSortableHeader>
+                                                    <MovimentacoesSortableHeader column="valorOperacao" className="text-right">Total</MovimentacoesSortableHeader>
+                                                    <TableHead className="text-center">Ações</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {movData.records.map((record) => (
+                                                    <TableRow key={record.id}>
+                                                        <TableCell>
+                                                            <span className={`px-2 py-1 rounded text-xs font-semibold ${record.entradaSaida === 'CREDITO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                                }`}>
+                                                                {record.entradaSaida === 'CREDITO' ? 'Crédito' : 'Débito'}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="font-medium">
+                                                            {new Date(record.dataMovimentacao).toLocaleDateString('pt-BR')}
+                                                        </TableCell>
+                                                        <TableCell>{record.codigoNegociacao}</TableCell>
+                                                        <TableCell>{record.produto}</TableCell>
+                                                        <TableCell>{record.instituicao}</TableCell>
+                                                        <TableCell className="text-right">{formatNumber(record.quantidade)}</TableCell>
+                                                        <TableCell className="text-right">{formatCurrency(record.precoUnitario)}</TableCell>
+                                                        <TableCell className="text-right font-semibold">
+                                                            {formatCurrency(record.valorOperacao)}
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleMovimentacoesDelete(record.id)}
+                                                                disabled={movDeletingId === record.id}
+                                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            >
+                                                                {movDeletingId === record.id ? (
+                                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                )}
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+
+                                    {/* Total and Pagination */}
+                                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t">
+                                        <div className="text-lg font-semibold">
+                                            Total: {formatCurrency(movData.totalValue)}
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleMovimentacoesSearch(movPage - 1)}
+                                                disabled={movPage === 1 || movLoading}
+                                            >
+                                                <ChevronLeft className="w-4 h-4" />
+                                                Anterior
+                                            </Button>
+
+                                            <span className="text-sm text-gray-600">
+                                                Página {movData.pagination.page} de {movData.pagination.totalPages}
+                                                ({movData.pagination.totalCount} registros)
+                                            </span>
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleMovimentacoesSearch(movPage + 1)}
+                                                disabled={movPage === movData.pagination.totalPages || movLoading}
+                                            >
+                                                Próxima
+                                                <ChevronRight className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Empty State */}
+                            {movData && movData.records.length === 0 && (
                                 <div className="text-center py-12 text-gray-500">
                                     <p className="text-lg font-medium">Nenhum registro encontrado</p>
                                     <p className="text-sm mt-1">

@@ -147,6 +147,61 @@ export default function ImportsPage() {
         }
     };
 
+    // Movimentações state
+    const [movimentacoesFile, setMovimentacoesFile] = useState<File | null>(null);
+    const [isProcessingMovimentacoes, setIsProcessingMovimentacoes] = useState(false);
+    const [movimentacoesResult, setMovimentacoesResult] = useState<ImportResult | null>(null);
+
+    const handleMovimentacoesFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && file.name.endsWith('.csv')) {
+            setMovimentacoesFile(file);
+            setMovimentacoesResult(null);
+        } else {
+            alert('Por favor, selecione um arquivo CSV válido');
+            e.target.value = '';
+        }
+    };
+
+    const handleProcessMovimentacoes = async () => {
+        if (!movimentacoesFile) {
+            alert('Por favor, selecione um arquivo CSV');
+            return;
+        }
+
+        setIsProcessingMovimentacoes(true);
+        setMovimentacoesResult(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', movimentacoesFile);
+
+            const response = await fetch('/api/admin/imports/movimentacoes', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result: ImportResult = await response.json();
+            setMovimentacoesResult(result);
+
+            if (result.success) {
+                setMovimentacoesFile(null);
+                const fileInput = document.getElementById('movimentacoes-file') as HTMLInputElement;
+                if (fileInput) fileInput.value = '';
+            }
+        } catch (error) {
+            setMovimentacoesResult({
+                success: false,
+                recordsImported: 0,
+                recordsDeleted: 0,
+                errors: ['Erro ao conectar com o servidor'],
+                message: 'Falha na importação',
+            });
+        } finally {
+            setIsProcessingMovimentacoes(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div>
@@ -158,6 +213,7 @@ export default function ImportsPage() {
                 <TabsList>
                     <TabsTrigger value="portfolio">Portfólio Consolidado</TabsTrigger>
                     <TabsTrigger value="proventos">Proventos</TabsTrigger>
+                    <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="portfolio" className="mt-6">
@@ -376,6 +432,103 @@ export default function ImportsPage() {
                                             {!proventosResult.success && proventosResult.errors.length > 0 && (
                                                 <div className="mt-2 text-sm text-red-700">
                                                     {proventosResult.errors.map((error, index) => (
+                                                        <p key={index}>• {error}</p>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="movimentacoes" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Importar Movimentações</CardTitle>
+                            <CardDescription>
+                                Faça upload de um arquivo CSV com os dados de movimentações
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {/* File Upload */}
+                            <div className="space-y-2">
+                                <Label htmlFor="movimentacoes-file">Arquivo CSV</Label>
+                                <div className="flex items-center gap-4">
+                                    <Input
+                                        id="movimentacoes-file"
+                                        type="file"
+                                        accept=".csv"
+                                        onChange={handleMovimentacoesFileChange}
+                                        className="cursor-pointer"
+                                    />
+                                    {movimentacoesFile && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <FileText className="w-4 h-4" />
+                                            <span>{movimentacoesFile.name}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    Selecione um arquivo CSV com os dados de movimentações
+                                </p>
+                            </div>
+
+                            {/* Process Button */}
+                            <div className="pt-4">
+                                <Button
+                                    onClick={handleProcessMovimentacoes}
+                                    className="w-full sm:w-auto"
+                                    disabled={isProcessingMovimentacoes}
+                                >
+                                    {isProcessingMovimentacoes ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Processando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-4 h-4 mr-2" />
+                                            Importar
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+
+                            {/* Process Result */}
+                            {movimentacoesResult && (
+                                <div className={`mt-6 p-4 rounded-lg border ${movimentacoesResult.success
+                                    ? 'bg-green-50 border-green-200'
+                                    : 'bg-red-50 border-red-200'
+                                    }`}>
+                                    <div className="flex items-start gap-3">
+                                        {movimentacoesResult.success ? (
+                                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                                        ) : (
+                                            <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                                        )}
+                                        <div className="flex-1">
+                                            <h4 className={`font-semibold ${movimentacoesResult.success ? 'text-green-900' : 'text-red-900'
+                                                }`}>
+                                                {movimentacoesResult.success ? 'Importação Concluída!' : 'Erro na Importação'}
+                                            </h4>
+                                            <p className={`text-sm mt-1 ${movimentacoesResult.success ? 'text-green-700' : 'text-red-700'
+                                                }`}>
+                                                {movimentacoesResult.message}
+                                            </p>
+                                            {movimentacoesResult.success && (
+                                                <div className="mt-2 text-sm text-green-700">
+                                                    <p>• {movimentacoesResult.recordsImported} registros importados</p>
+                                                    {movimentacoesResult.recordsDeleted > 0 && (
+                                                        <p>• {movimentacoesResult.recordsDeleted} registros anteriores substituídos</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {!movimentacoesResult.success && movimentacoesResult.errors.length > 0 && (
+                                                <div className="mt-2 text-sm text-red-700">
+                                                    {movimentacoesResult.errors.map((error, index) => (
                                                         <p key={index}>• {error}</p>
                                                     ))}
                                                 </div>
